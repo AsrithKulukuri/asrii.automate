@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:push": "prisma db push",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "setup:local": "npm run db:generate && npm run db:push && npm run db:seed"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

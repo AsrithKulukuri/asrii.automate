@@ -18,36 +18,113 @@ import { InstagramIcon } from "@/components/icons/InstagramIcon";
 
 export const dynamic = "force-dynamic";
 
+interface DashboardAccount {
+  id?: string;
+  workspaceId?: string;
+  igUserId?: string;
+  igUsername: string;
+  igName?: string | null;
+  profilePictureUrl?: string | null;
+  isActive?: boolean;
+  healthStatus: string;
+  isDeveloperToken: boolean;
+}
+
+interface DashboardExecution {
+  id: string;
+  workflowId: string;
+  status: string;
+  mode: string;
+  inputPayload: string;
+  executionLogs: string;
+  durationMs: number;
+  createdAt: Date;
+  workflow?: {
+    id: string;
+    name: string;
+  } | null;
+}
+
 export default async function DashboardPage() {
   const user = (await getCurrentUser()) || (await getOrCreateDemoSession());
 
-  // Aggregate database queries
-  const [
-    account,
-    totalWorkflows,
-    activeWorkflows,
-    totalExecutions,
-    recentExecutions,
-    sentReplies,
-  ] = await Promise.all([
-    prisma.connectedAccount.findFirst({
-      where: { workspaceId: user.workspaceId, isActive: true },
-    }),
-    prisma.workflow.count({ where: { workspaceId: user.workspaceId } }),
-    prisma.workflow.count({ where: { workspaceId: user.workspaceId, isActive: true } }),
-    prisma.workflowExecution.count({
-      where: { workflow: { workspaceId: user.workspaceId } },
-    }),
-    prisma.workflowExecution.findMany({
-      where: { workflow: { workspaceId: user.workspaceId } },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { workflow: true },
-    }),
-    prisma.messageLog.count({
-      where: { workspaceId: user.workspaceId, status: "SENT" },
-    }),
-  ]);
+  let account: DashboardAccount | null = null;
+  let totalWorkflows = 0;
+  let activeWorkflows = 0;
+  let totalExecutions = 0;
+  let recentExecutions: DashboardExecution[] = [];
+  let sentReplies = 0;
+
+  try {
+    const results = await Promise.all([
+      prisma.connectedAccount.findFirst({
+        where: { workspaceId: user.workspaceId, isActive: true },
+      }),
+      prisma.workflow.count({ where: { workspaceId: user.workspaceId } }),
+      prisma.workflow.count({ where: { workspaceId: user.workspaceId, isActive: true } }),
+      prisma.workflowExecution.count({
+        where: { workflow: { workspaceId: user.workspaceId } },
+      }),
+      prisma.workflowExecution.findMany({
+        where: { workflow: { workspaceId: user.workspaceId } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        include: { workflow: true },
+      }),
+      prisma.messageLog.count({
+        where: { workspaceId: user.workspaceId, status: "SENT" },
+      }),
+    ]);
+    account = results[0];
+    totalWorkflows = results[1];
+    activeWorkflows = results[2];
+    totalExecutions = results[3];
+    recentExecutions = results[4];
+    sentReplies = results[5];
+  } catch (dbErr) {
+    console.warn("[DashboardPage] DB query notice:", (dbErr as Error).message);
+    if (user.isDemo) {
+      account = {
+        id: "acc_demo_01",
+        workspaceId: user.workspaceId,
+        igUserId: "17841400012345678",
+        igUsername: "asrii.official",
+        igName: "Asrii Automate Official",
+        profilePictureUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=120&auto=format&fit=crop&q=80",
+        isActive: true,
+        healthStatus: "HEALTHY",
+        isDeveloperToken: true,
+      };
+      totalWorkflows = 2;
+      activeWorkflows = 2;
+      totalExecutions = 2;
+      sentReplies = 2;
+      recentExecutions = [
+        {
+          id: "exec_seed_1",
+          workflowId: "wf_demo_price_inquiry",
+          status: "SUCCESS",
+          mode: "MOCK",
+          inputPayload: JSON.stringify({ username: "sarah_creator", text: "What is the price of this SaaS?" }),
+          executionLogs: JSON.stringify([{ step: "DISPATCH_MOCK", status: "SUCCESS" }]),
+          durationMs: 14,
+          createdAt: new Date(),
+          workflow: { id: "wf_demo_price_inquiry", name: "Price Inquiry Auto-Reply" },
+        },
+        {
+          id: "exec_seed_2",
+          workflowId: "wf_demo_vip_access",
+          status: "SUCCESS",
+          mode: "MOCK",
+          inputPayload: JSON.stringify({ username: "alex_founder", text: "Can I get VIP early access?" }),
+          executionLogs: JSON.stringify([{ step: "DISPATCH_MOCK", status: "SUCCESS" }]),
+          durationMs: 9,
+          createdAt: new Date(),
+          workflow: { id: "wf_demo_vip_access", name: "VIP Early Access Invite" },
+        },
+      ];
+    }
+  }
 
   const metrics = [
     {

@@ -57,6 +57,7 @@ function PlaygroundContent() {
   const [username, setUsername] = useState("test_customer");
   const [commentText, setCommentText] = useState("Can you send me the price?");
 
+  const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Record<number, boolean>>({});
@@ -123,6 +124,7 @@ function PlaygroundContent() {
 
     setIsRunning(true);
     setResult(null);
+    setError(null);
 
     try {
       const res = await fetch("/api/workflows/test", {
@@ -140,9 +142,10 @@ function PlaygroundContent() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Test failed");
       setResult(data);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "Test failed");
     } finally {
       setIsRunning(false);
     }
@@ -323,7 +326,7 @@ function PlaygroundContent() {
                   variant={mode === "LIVE" ? "danger" : "primary"}
                   className="w-full"
                   isLoading={isRunning}
-                  onClick={() => executeTest(false)}
+                  onClick={() => executeTest(mode === "LIVE")}
                   leftIcon={<Play className="w-4 h-4 fill-current" />}
                 >
                   {mode === "LIVE" ? "Dispatch Live Test via Meta" : "Run Mock Test"}
@@ -363,6 +366,7 @@ function PlaygroundContent() {
               )}
             </CardHeader>
             <CardContent>
+              {error && <p role="alert" className="mb-4 text-sm text-red-400">{error}</p>}
               {!result ? (
                 <div className="p-12 text-center">
                   <Play className="w-8 h-8 text-[#404040] mx-auto mb-2" />

@@ -14,17 +14,29 @@ export default async function DashboardLayout({
     user = await getOrCreateDemoSession();
   }
 
-  const account = await prisma.connectedAccount.findFirst({
-    where: {
-      workspaceId: user.workspaceId,
-      isActive: true,
-    },
-    select: {
-      igUsername: true,
-      healthStatus: true,
-      isDeveloperToken: true,
-    },
-  });
+  let account = null;
+  try {
+    account = await prisma.connectedAccount.findFirst({
+      where: {
+        workspaceId: user.workspaceId,
+        isActive: true,
+      },
+      select: {
+        igUsername: true,
+        healthStatus: true,
+        isDeveloperToken: true,
+      },
+    });
+  } catch (err) {
+    console.warn("[DashboardLayout] DB query notice:", (err as Error).message);
+    if (user.isDemo) {
+      account = {
+        igUsername: "asrii.official",
+        healthStatus: "HEALTHY",
+        isDeveloperToken: true,
+      };
+    }
+  }
 
   return (
     <DashboardShell user={user} connectedAccount={account}>

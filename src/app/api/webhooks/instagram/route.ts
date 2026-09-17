@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
         await executeWorkflow({
           workflowId: wf.id,
           workspaceId,
-          mode: "LIVE",
+          mode: process.env.ENABLE_LIVE_META === "true" ? "LIVE" : "MOCK",
           event: {
             eventId: evt.eventId,
             postId: evt.postId,

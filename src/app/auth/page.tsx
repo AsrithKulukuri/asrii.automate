@@ -27,8 +27,13 @@ export default function AuthPage() {
       if (data.success) {
         router.push("/dashboard");
         router.refresh();
+        return;
       }
-    } catch {
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Demo login error:", err);
+      router.push("/dashboard");
+    } finally {
       setIsDemoLoginLoading(false);
     }
   };

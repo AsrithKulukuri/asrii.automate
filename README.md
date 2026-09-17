@@ -1,34 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Asrii Automate — local testing
 
-## Getting Started
+Instagram comment automation with a SQLite database and a mock execution playground.
 
-First, run the development server:
+## Start
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependencies: `npm install`.
+2. Copy `.env.example` to `.env` if no local environment file exists.
+3. Run `npm run setup:local` to generate Prisma, create the SQLite tables, and seed two sample workflows.
+4. Run `npm run dev` and open http://localhost:3000.
+5. Enter the demo workspace and open **Playground**. Select **Price Inquiry Auto-Reply**, enter “What is the price?”, and run a mock test.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Mock runs persist in Activity. Try unrelated text and excluded keywords to verify skipped executions. Create, edit, pause, and delete workflows from Workflows.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Real message dispatch is disabled by default. Keep `ENABLE_LIVE_META=false` for testing. Webhook events execute in mock mode unless this flag is explicitly enabled. Meta OAuth and real account connections require actual Meta credentials; the seeded account is simulated.
 
-## Learn More
+## Checks
 
-To learn more about Next.js, take a look at the following resources:
+- `npm test`: automated tests (currently use the configured local database).
+- `npm run lint`: lint checks.
+- `npm run build`: compilation and TypeScript checks.
+- `GET /api/health`: database and configuration status.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This demo uses simplified authentication and is intended for local testing. Do not expose it publicly as a production service.

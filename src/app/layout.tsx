@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   description:
     "Official Meta Graph API automation platform for Instagram Professional accounts. Build reliable comment-to-DM workflows, test with simulated events, and manage webhooks.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/icon.svg",
   },
 };
 

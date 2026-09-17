@@ -39,6 +39,9 @@ export interface ExecutionResult {
 }
 
 export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<ExecutionResult> {
+  if (input.mode === "LIVE" && process.env.ENABLE_LIVE_META !== "true") {
+    throw new Error("Live dispatch is disabled for local testing. Use MOCK mode.");
+  }
   const startTime = Date.now();
   const timeline: ExecutionStepLog[] = [];
 
@@ -71,7 +74,7 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
     include: { connectedAccount: true },
   });
 
-  if (!workflow) {
+  if (!workflow || workflow.workspaceId !== input.workspaceId) {
     recordStep("WORKFLOW_NOT_FOUND", "FAILED", `Workflow with ID ${input.workflowId} not found in database`);
     return {
       executionId: "exec_err_" + Date.now(),
@@ -128,7 +131,8 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
   const matchResult = evaluateCommentCondition(
     input.event.text,
     input.event.postId,
-    conditionConfig
+    conditionConfig,
+    JSON.parse(workflow.triggerConfig).postId
   );
 
   if (!matchResult.matched) {
@@ -240,6 +244,7 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
   // Check 1-reply per comment deduplication in our message logs
   const existingReply = await prisma.messageLog.findFirst({
     where: {
+      workspaceId: input.workspaceId,
       commentId: input.event.commentId,
       status: "SENT",
     },
