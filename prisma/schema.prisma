@@ -1,0 +1,181 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships WorkspaceMember[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  members           WorkspaceMember[]
+  connectedAccounts ConnectedAccount[]
+  workflows         Workflow[]
+  webhookEvents     WebhookEvent[]
+  contacts          Contact[]
+  messageLogs       MessageLog[]
+  auditLogs         AuditLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        String   @default("MEMBER") // OWNER, ADMIN, MEMBER
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model ConnectedAccount {
+  id                   String    @id @default(uuid())
+  workspaceId          String
+  igUserId             String
+  igUsername           String
+  igName               String?
+  profilePictureUrl    String?
+  encryptedAccessToken String
+  iv                   String
+  authTag              String
+  tokenExpiresAt       DateTime?
+  scopes               String    @default("instagram_basic,instagram_manage_comments,instagram_manage_messages")
+  isActive             Boolean   @default(true)
+  healthStatus         String    @default("HEALTHY") // HEALTHY, WARNING, EXPIRED, REVOKED
+  isDeveloperToken     Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflows Workflow[]
+
+  @@unique([workspaceId, igUserId])
+  @@map("connected_accounts")
+}
+
+model Workflow {
+  id                 String   @id @default(uuid())
+  workspaceId        String
+  connectedAccountId String?
+  name               String
+  description        String?
+  isActive           Boolean  @default(true)
+  triggerConfig      String   @default("{}") // JSON string: { type: "COMMENT_RECEIVED", postId: null }
+  conditionConfig    String   @default("{}") // JSON string: { matchType: "CONTAINS_ANY", keywords: [], excludedKeywords: [], caseSensitive: false }
+  actionConfig       String   @default("{}") // JSON string: { type: "PRIVATE_REPLY", template: "..." }
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connectedAccount ConnectedAccount?   @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+  executions       WorkflowExecution[]
+
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id             String   @id @default(uuid())
+  workflowId     String
+  triggerEventId String?
+  status         String   // SUCCESS, FAILED, SKIPPED, UNSUPPORTED
+  mode           String   // MOCK, LIVE
+  inputPayload   String   // JSON string of event (post_id, comment_id, text, username)
+  executionLogs  String   // JSON string array of steps
+  durationMs     Int      @default(0)
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+
+  workflow    Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  messageLogs MessageLog[]
+
+  @@map("workflow_executions")
+}
+
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  workspaceId String
+  eventId     String   @unique
+  objectType  String   @default("instagram")
+  rawPayload  String   // JSON string
+  signature   String?
+  status      String   @default("PROCESSED") // PROCESSED, DUPLICATE, FAILED, IGNORED
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_events")
+}
+
+model Contact {
+  id                String    @id @default(uuid())
+  workspaceId       String
+  igScopedId        String
+  username          String?
+  tags              String    @default("[]") // JSON string
+  lastInteractionAt DateTime? @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, igScopedId])
+  @@map("contacts")
+}
+
+model MessageLog {
+  id                  String   @id @default(uuid())
+  workspaceId         String
+  workflowExecutionId String?
+  recipientId         String
+  commentId           String?
+  messageType         String   @default("PRIVATE_REPLY") // PRIVATE_REPLY, DIRECT_MESSAGE
+  messageContent      String
+  metaMessageId       String?
+  status              String   @default("SENT") // SENT, FAILED, RATE_LIMITED, UNSUPPORTED
+  errorDetails        String?  // JSON string
+  sentAt              DateTime @default(now())
+
+  workspace Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  execution WorkflowExecution? @relation(fields: [workflowExecutionId], references: [id], onDelete: SetNull)
+
+  @@map("message_logs")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  workspaceId String
+  userId      String?
+  action      String   // ACCOUNT_CONNECTED, WORKFLOW_CREATED, WORKFLOW_UPDATED, PLAYGROUND_TEST, etc.
+  targetType  String   // WORKFLOW, ACCOUNT, WEBHOOK, SYSTEM
+  targetId    String?
+  metadata    String   @default("{}") // JSON string
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
