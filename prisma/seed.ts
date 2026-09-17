@@ -1,3 +1,5 @@
+import { loadEnvConfig } from "@next/env";
+loadEnvConfig(process.cwd());
 import { seedDemoData } from "../src/lib/seed";
 
 async function main() {

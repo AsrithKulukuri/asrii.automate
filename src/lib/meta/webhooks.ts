@@ -32,7 +32,7 @@ export function verifyWebhookSignature(
 
   if (!secret) {
     // In production, refusing to verify without a secret is essential for security
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" || process.env.ENABLE_LIVE_META === "true") {
       console.error("META_APP_SECRET is required in production for webhook verification.");
       return false;
     }
@@ -92,14 +92,14 @@ export function parseInstagramCommentEvents(payload: MetaWebhookPayload): Extrac
           const val = change.value as WebhookCommentChangeValue;
           if (val && val.id && val.text) {
             events.push({
-              eventId: `evt_${val.id}_${entry.time || Date.now()}`,
+              eventId: `evt_${accountId}_${val.id}`,
               accountId,
               postId: val.media?.id || "post_unknown",
               commentId: val.id,
               username: val.from?.username || "instagram_user",
               fromId: val.from?.id || "ig_user_unknown",
               text: val.text,
-              timestamp: val.created_time ? val.created_time * 1000 : entry.time || Date.now(),
+              timestamp: normalizeTimestamp(val.created_time || entry.time),
             });
           }
         }
@@ -108,4 +108,9 @@ export function parseInstagramCommentEvents(payload: MetaWebhookPayload): Extrac
   }
 
   return events;
+}
+
+function normalizeTimestamp(value?: number): number {
+  if (!value || !Number.isFinite(value)) return Date.now();
+  return value < 1e12 ? value * 1000 : value;
 }

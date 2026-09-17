@@ -1,9 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 
-// Ensure DATABASE_URL is set so PrismaClient instantiation never throws if env var is missing
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "file:./dev.db";
-}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

@@ -9,44 +9,31 @@ export async function POST(request: NextRequest) {
     const user = (await getCurrentUser()) || (await getOrCreateDemoSession());
     const body = await request.json();
 
-    const { accessToken, igUserId, igUsername, environment, isDeveloperToken } = body;
+    const { accessToken, igUserId } = body;
+    const isDeveloperToken = true;
 
     if (!accessToken || typeof accessToken !== "string" || accessToken.trim() === "") {
       return NextResponse.json({ error: "Access token is required" }, { status: 400 });
     }
 
     const cleanToken = accessToken.trim();
-    let verifiedAccount = {
-      igUserId: igUserId || "17841400012345678",
-      igUsername: igUsername || "asrii.creator",
-      igName: "Instagram Professional",
-      profilePictureUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=120&auto=format&fit=crop&q=80",
-      scopes: "instagram_basic,instagram_manage_comments,instagram_manage_messages",
-    };
-
-    // If attempting real live Meta verification with a real token
-    if (cleanToken.startsWith("EAAB") || cleanToken.startsWith("EAA")) {
-      try {
-        const accounts = await fetchInstagramAccounts(cleanToken);
-        if (accounts.length > 0) {
-          verifiedAccount = {
-            igUserId: accounts[0].id,
-            igUsername: accounts[0].username,
-            igName: accounts[0].name || accounts[0].username,
-            profilePictureUrl: accounts[0].profile_picture_url || verifiedAccount.profilePictureUrl,
-            scopes: verifiedAccount.scopes,
-          };
-        }
-      } catch (metaErr) {
-        // If developer testing without live Meta app approval, allow development token with warning
-        if (environment !== "development" && !isDeveloperToken) {
-          return NextResponse.json(
-            { error: `Meta Verification Failed: ${(metaErr as Error).message}` },
-            { status: 400 }
-          );
-        }
-      }
+    let discovered;
+    try {
+      const accounts = await fetchInstagramAccounts(cleanToken);
+      discovered = igUserId ? accounts.find((account) => account.id === igUserId) : accounts[0];
+      if (!discovered) throw new Error("Token does not grant access to this account");
+    } catch {
+      return NextResponse.json({ error: "Instagram could not verify this token/account. Generate a token using API setup with Instagram login and check the account ID." }, { status: 400 });
     }
+    const verifiedAccount = {
+      igUserId: discovered.id,
+      igUsername: discovered.username,
+      igName: discovered.name || discovered.username,
+      profilePictureUrl: discovered.profile_picture_url,
+      scopes: process.env.META_LOGIN_PROVIDER === "facebook"
+        ? "instagram_basic,instagram_manage_comments,instagram_manage_messages"
+        : "instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages",
+    };
 
     // Encrypt token using AES-256-GCM before database persistence
     const encrypted = encryptToken(cleanToken);
@@ -88,6 +75,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await prisma.connectedAccount.updateMany({
+      where: { workspaceId: user.workspaceId, id: { not: account.id } },
+      data: { isActive: false },
+    });
+
     // Audit log
     await prisma.auditLog.create({
       data: {
@@ -120,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Connect Instagram error:", error);
+    console.error("Connect Instagram failed:", error instanceof Error ? error.name : "Unknown error");
     return NextResponse.json(
       { error: "Failed to connect Instagram account" },
       { status: 500 }

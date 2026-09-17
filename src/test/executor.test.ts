@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { executeWorkflow } from "../lib/engine/executor";
 import { seedDemoData } from "../lib/seed";
+import { prisma } from "../lib/db";
 import { DEMO_WORKSPACE_ID } from "../lib/auth";
 
 describe("Workflow Execution Engine (Mock & Policy Validation)", () => {
@@ -69,5 +70,21 @@ describe("Workflow Execution Engine (Mock & Policy Validation)", () => {
 
     expect(result.status).toBe("UNSUPPORTED");
     expect(result.errorMessage).toContain("7 days");
+  });
+
+  it("rejects execution from a different workspace", async () => {
+    const result = await executeWorkflow({workflowId, workspaceId: "other-workspace", mode: "MOCK", event: {postId: "p", commentId: "c", username: "tester", text: "price"}});
+    expect(result.status).toBe("FAILED");
+    expect(result.errorMessage).toBe("Workflow not found");
+  });
+
+  it("honors a post filter stored only in triggerConfig", async () => {
+    const workflow = await prisma.workflow.create({data: {workspaceId: DEMO_WORKSPACE_ID, name: "Trigger filter regression", triggerConfig: JSON.stringify({type: "COMMENT_RECEIVED", postId: "target-post"}), conditionConfig: JSON.stringify({matchType: "ANY_COMMENT"}), actionConfig: JSON.stringify({type: "PRIVATE_REPLY", template: "Hello"})}});
+    try {
+      const result = await executeWorkflow({workflowId: workflow.id, workspaceId: DEMO_WORKSPACE_ID, mode: "MOCK", event: {postId: "other-post", commentId: "regression-comment", username: "tester", text: "price"}});
+      expect(result.status).toBe("SKIPPED");
+    } finally {
+      await prisma.workflow.delete({where: {id: workflow.id}});
+    }
   });
 });

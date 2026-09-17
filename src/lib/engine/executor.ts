@@ -321,7 +321,7 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
     recordStep("DISPATCH_LIVE", "INFO", "Dispatching live private reply via Meta Graph API v21.0...");
 
     const account = workflow.connectedAccount;
-    if (!account) {
+    if (!account || !account.isActive || account.healthStatus !== "HEALTHY") {
       recordStep("DISPATCH_LIVE", "FAILED", "No Instagram account connected to this workflow");
       executionStatus = "FAILED";
       errorMessage = "Connected Instagram account required for live execution";

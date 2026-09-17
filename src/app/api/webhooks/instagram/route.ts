@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         matchedAccountId = account.id;
       } else {
         // Fallback for local development / test sandbox if no production account mapped
-        if (process.env.NODE_ENV !== "production") {
+        if (process.env.NODE_ENV !== "production" && process.env.ENABLE_LIVE_META !== "true") {
           const fallbackWorkspace = await prisma.workspace.findFirst();
           workspaceId = fallbackWorkspace?.id || DEMO_WORKSPACE_ID;
         } else {

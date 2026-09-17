@@ -90,4 +90,14 @@ describe("Meta Instagram Webhook Ingestion & Security", () => {
     expect(events[0].text).toBe("Can you send me the price?");
     expect(events[0].postId).toBe("post_111");
   });
+
+  it("normalizes entry timestamps and keeps retry event IDs stable", () => {
+    const payload: MetaWebhookPayload = {object: "instagram", entry: [{id: "account", time: 1710000000, changes: [{field: "comments", value: {id: "comment", text: "link", from: {id: "person", username: "tester"}, media: {id: "reel"}}}]}]};
+    const first = parseInstagramCommentEvents(payload)[0];
+    expect(first.timestamp).toBe(1710000000000);
+    payload.entry[0].time = 1710000005000;
+    const retry = parseInstagramCommentEvents(payload)[0];
+    expect(retry.timestamp).toBe(1710000005000);
+    expect(retry.eventId).toBe(first.eventId);
+  });
 });

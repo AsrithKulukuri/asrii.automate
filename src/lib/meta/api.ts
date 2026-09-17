@@ -8,7 +8,8 @@ import {
 } from "./types";
 import { classifyMetaError } from "./errors";
 
-const GRAPH_BASE = "https://graph.facebook.com";
+const GRAPH_BASE = process.env.META_LOGIN_PROVIDER === "facebook"
+  ? "https://graph.facebook.com" : "https://graph.instagram.com";
 const DEFAULT_VERSION = process.env.META_API_VERSION || "v21.0";
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -82,6 +83,16 @@ export async function debugToken(
  */
 export async function fetchInstagramAccounts(accessToken: string): Promise<InstagramAccountInfo[]> {
   try {
+    if (process.env.META_LOGIN_PROVIDER !== "facebook") {
+      const profile = await graphFetch<{ id: string; user_id?: string; username: string }>(
+        "/me?fields=id,user_id,username",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!profile.username || !(profile.user_id || profile.id)) {
+        throw new Error("Token did not resolve to an Instagram professional account");
+      }
+      return [{ id: profile.user_id || profile.id, username: profile.username }];
+    }
     // 1. Check if token directly represents an Instagram Business Account
     try {
       const directMe = await graphFetch<InstagramAccountInfo>(
