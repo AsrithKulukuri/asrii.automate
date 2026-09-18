@@ -87,6 +87,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Ignore our own public replies to avoid automation loops.
+      if (account && (evt.fromId === account.igUserId || evt.username.toLowerCase() === account.igUsername.toLowerCase())) continue;
+
       if (account) {
         workspaceId = account.workspaceId;
         matchedAccountId = account.id;

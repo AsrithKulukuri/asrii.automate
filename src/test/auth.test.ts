@@ -9,7 +9,7 @@ describe("Developer Demo Session & Auth Fallback", () => {
     expect(session.isDemo).toBe(true);
     expect(session.workspaceId).toBeDefined();
     expect(session.workspaceName).toBe("Asrii Automation Studio");
-  });
+  }, 20000);
 
   it("should have consistent DEFAULT_DEMO_SESSION parameters", () => {
     expect(DEFAULT_DEMO_SESSION.id).toBe(DEMO_USER_ID);

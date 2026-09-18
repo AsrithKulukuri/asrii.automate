@@ -230,3 +230,12 @@ export async function sendDirectMessage(
     };
   }
 }
+
+/** Public acknowledgement, called only after a successful private reply. */
+export async function sendCommentReply(commentId: string, message: string, accessToken: string): Promise<{ id: string }> {
+  if (!commentId || !message || !accessToken) throw new Error("Missing public reply parameters");
+  return graphFetch<{ id: string }>(
+    `/${encodeURIComponent(commentId)}/replies`,
+    { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ message }) }
+  );
+}

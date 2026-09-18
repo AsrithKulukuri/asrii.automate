@@ -1,7 +1,7 @@
 import { prisma } from "../db";
 import { decryptToken } from "../crypto";
 import { evaluateCommentCondition, renderMessageTemplate, ConditionConfig } from "./matcher";
-import { sendPrivateReply } from "../meta/api";
+import { sendPrivateReply, sendCommentReply } from "../meta/api";
 
 export interface ExecutionStepLog {
   step: string;
@@ -302,7 +302,9 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
       networkRequest: false,
     });
 
+    recordStep("PUBLIC_COMMENT_REPLY_MOCK", "SUCCESS", "Simulated public reply: Done! Sent you a DM 📩");
     responsePayload = {
+      publicReply: { status: "SIMULATED", message: "Done! Sent you a DM 📩" },
       mode: "MOCK",
       status: "SUCCESS",
       workflow: workflow.name,
@@ -367,6 +369,16 @@ export async function executeWorkflow(input: ExecuteWorkflowInput): Promise<Exec
           },
         });
         createdMessageLogId = messageLog.id;
+
+        // A failed public acknowledgement must not turn a delivered DM into a failed DM.
+        try {
+          const publicReply = await sendCommentReply(input.event.commentId, "Done! Sent you a DM 📩", decryptedToken);
+          responsePayload.publicReply = { status: "SUCCESS", commentId: publicReply.id };
+          recordStep("PUBLIC_COMMENT_REPLY", "SUCCESS", "Posted: Done! Sent you a DM 📩", { commentId: publicReply.id });
+        } catch {
+          responsePayload.publicReply = { status: "FAILED" };
+          recordStep("PUBLIC_COMMENT_REPLY", "WARNING", "DM sent, but the public comment reply failed. Check Instagram comment permissions and restrictions.");
+        }
       } catch (err: unknown) {
         executionStatus = "FAILED";
         const classified =
