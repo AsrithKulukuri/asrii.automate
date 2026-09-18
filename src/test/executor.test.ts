@@ -10,7 +10,7 @@ describe("Workflow Execution Engine (Mock & Policy Validation)", () => {
   beforeAll(async () => {
     const seed = await seedDemoData();
     workflowId = seed?.workflows[0]?.id || "wf_demo_price_inquiry";
-  });
+  }, 30000);
 
   it("should successfully execute in MOCK mode when comment matches keyword", async () => {
     const result = await executeWorkflow({

@@ -290,7 +290,10 @@ export default function LandingPage() {
           <span className="font-semibold text-[#F5F5F5]">Asrii Automate</span>
           <span>• Production Instagram SaaS for Developers</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/data-deletion">Data Deletion</Link>
           <Link href="/dashboard" className="hover:text-[#F5F5F5] transition-colors">
             Dashboard
           </Link>
